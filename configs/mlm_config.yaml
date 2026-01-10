@@ -1,0 +1,19 @@
+# Masked Language Modeling (MLM) BERT fine-tuning configuration
+
+model_name: "mlm_bert"
+
+# MLM specific settings
+mlm:
+  mask_probability: 0.15 # Standard BERT masking
+  replace_with_mask_prob: 0.8 # 80% replaced with [MASK]
+  replace_with_random_prob: 0.1 # 10% replaced with random token
+  # 10% kept original (implicitly)
+
+training:
+  batch_size: 128
+  num_epochs: 10
+  learning_rate_backbone: 5.0e-5
+  warmup_ratio: 0.1
+
+  # MLM uses standard cross-entropy loss
+  loss_type: "mlm_loss"

@@ -1,0 +1,19 @@
+# TSDAE (Transformer-based Sequential Denoising AutoEncoder) configuration
+
+model_name: "tsdae"
+
+# TSDAE specific settings
+tsdae:
+  deletion_probability: 0.6 # Probability of deleting each token
+  min_tokens_kept: 5 # Minimum tokens to keep after deletion
+
+  # Decoder settings
+  tie_encoder_decoder: true # Share weights between encoder and decoder
+
+training:
+  batch_size: 128
+  num_epochs: 10
+  learning_rate_backbone: 3.0e-5
+
+  # TSDAE uses reconstruction loss, not contrastive
+  loss_type: "cross_entropy"

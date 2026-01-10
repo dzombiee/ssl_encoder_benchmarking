@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# PyTorch
+*.pt
+*.pth
+*.ckpt
+
+# Data files (keep structure, ignore actual data)
+data/*.jsonl
+!data/README.md
+
+# Experiment outputs
+experiments/*/
+!experiments/.gitkeep
+data/processed/
+*.npz
+*.pkl
+*.csv
+
+# Logs
+logs/
+*.log
+tensorboard/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Results
+results/
+outputs/
+*.png
+*.jpg
+*.pdf
+
+# Model checkpoints (large files)
+checkpoints/
+*.bin
+
+# Temporary files
+tmp/
+temp/
+*.tmp

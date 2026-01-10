@@ -1,0 +1,14 @@
+# SimCSE (dropout variant) configuration
+# Inherits from base_config.yaml
+
+model_name: "simcse_dropout"
+
+# SimCSE specific settings
+simcse:
+  augmentation_type: "dropout" # Use dropout as augmentation
+  dropout_rate: 0.1 # Dropout rate for creating positive pairs
+
+training:
+  batch_size: 64 # SimCSE benefits from larger batches but reduced for memory safety
+  num_epochs: 5
+  temperature: 0.05

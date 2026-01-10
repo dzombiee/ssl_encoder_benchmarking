@@ -1,0 +1,62 @@
+# Base configuration for SSL cold-start recommendation experiments
+
+# Data paths
+data:
+  reviews_path: "data/All_Beauty.jsonl"
+  metadata_path: "data/meta_All_Beauty.jsonl"
+  output_dir: "data/processed"
+
+# Cold-start split configuration
+split:
+  cold_item_ratio: 0.15 # 15% of items are cold
+  min_user_interactions: 5 # Minimum interactions per user
+  min_warm_items_per_user: 1 # Ensure users have at least 1 warm item in history
+  val_ratio: 0.1 # 10% of warm items for validation
+  test_ratio: 0.1 # 10% of warm items for test (in addition to cold items)
+  random_seed: 42
+
+# Text preprocessing
+preprocessing:
+  max_text_length: 256 # Max tokens for BERT
+  lowercase: true
+  remove_html: true
+  min_text_length: 3 # Minimum text length to keep item
+
+# Model architecture
+model:
+  backbone: "bert-base-uncased" # or "distilbert-base-uncased" for faster training
+  embedding_dim: 256 # Final embedding dimension (project from 768)
+  pooling_strategy: "mean" # "mean" or "cls"
+  dropout: 0.1
+
+# Training settings
+training:
+  batch_size: 64 # Reduced for memory efficiency (increase to 128-256 if GPU memory allows)
+  learning_rate_backbone: 2.0e-5 # LR for BERT backbone
+  learning_rate_head: 1.0e-3 # LR for projection head
+  num_epochs: 10
+  warmup_steps: 500
+  weight_decay: 0.01
+  gradient_clip: 1.0
+
+  # Contrastive loss settings
+  temperature: 0.05 # Temperature for InfoNCE loss
+
+  # Mixed precision training
+  use_amp: false # Disable AMP for stability (enable if using GPU with tensor cores)
+
+# Evaluation settings
+evaluation:
+  k_values: [5, 10, 20] # For Recall@K and NDCG@K
+  num_negatives: 9999 # Number of negative samples per positive (10000 total candidates for fairness)
+  negative_sampling: "popularity" # "random" or "popularity" (popularity-aware prevents easy negatives)
+  num_seeds: 5 # Number of random seeds for statistical testing (≥5 for robustness)
+  user_aggregation: "mean" # How to aggregate user history: "mean" or "attention"
+  bootstrap_samples: 1000 # Number of bootstrap resamples for confidence intervals
+
+# Experiment tracking
+experiment:
+  output_dir: "experiments"
+  log_dir: "logs"
+  save_checkpoints: true
+  checkpoint_interval: 1 # Save every N epochs

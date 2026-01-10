@@ -1,0 +1,32 @@
+# Multi-view contrastive learning configuration
+# Treats title, description, and attributes as separate views
+
+model_name: "multiview_contrastive"
+
+# Multi-view specific settings
+multiview:
+  views:
+    - "title"
+    - "description"
+    - "attributes"
+
+  # Alignment strategy
+  alignment: "pairwise" # "pairwise" or "triplet"
+
+  # Handling missing views
+  fallback_strategy: "concatenate" # Concatenate available views if some missing
+  min_views_required: 1 # Minimum number of views required to keep item
+
+  # View-specific encoders
+  shared_encoder: true # Use same BERT for all views (recommended)
+
+training:
+  batch_size: 128 # Smaller batch due to multiple views
+  num_epochs: 10
+  temperature: 0.07
+
+  # Loss weighting for different view pairs
+  loss_weights:
+    title_description: 1.0
+    title_attributes: 0.8
+    description_attributes: 0.8
