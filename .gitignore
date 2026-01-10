@@ -18,12 +18,12 @@ ENV/
 *.ckpt
 
 # Data files (keep structure, ignore actual data)
-data/*.jsonl
 !data/README.md
 
 # Experiment outputs
 experiments/*/
 !experiments/.gitkeep
+data/*.jsonl
 data/processed/
 *.npz
 *.pkl

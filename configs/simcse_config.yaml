@@ -9,7 +9,7 @@ simcse:
   dropout_rate: 0.1 # Dropout rate for creating positive pairs
 
 training:
-  batch_size: 64 # SimCSE benefits from larger batches but reduced for memory safety
+  batch_size: 16 # SimCSE benefits from larger batches but reduced for memory safety
   num_epochs: 5
   temperature: 0.05
   learning_rate_backbone: 3.0e-5  # Lower LR for backbone

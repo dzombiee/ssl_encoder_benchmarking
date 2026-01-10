@@ -172,9 +172,7 @@ def extract_embeddings(
     return embeddings_dict
 
 
-def train_ssl_model(
-    config_path: str, model_type: str, output_dir: str
-):
+def train_ssl_model(config_path: str, model_type: str, output_dir: str):
     """
     Train an SSL model.
 
@@ -194,6 +192,7 @@ def train_ssl_model(
     # Device
     device = get_device()
     print(f"Using device: {device}")
+    print(f"\nUsing embedding model: {config['model']['backbone']}")
 
     # Output directory
     output_path = Path(output_dir)

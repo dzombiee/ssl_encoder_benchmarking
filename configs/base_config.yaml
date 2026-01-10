@@ -31,7 +31,7 @@ model:
 
 # Training settings
 training:
-  batch_size: 64 # Reduced for memory efficiency (increase to 128-256 if GPU memory allows)
+  batch_size: 16 # Reduced for memory efficiency (increase to 128-256 if GPU memory allows)
   learning_rate_backbone: 2.0e-5 # LR for BERT backbone
   learning_rate_head: 1.0e-3 # LR for projection head
   num_epochs: 10

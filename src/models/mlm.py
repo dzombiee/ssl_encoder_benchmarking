@@ -15,7 +15,7 @@ class MLMModel(nn.Module):
 
     def __init__(
         self,
-        model_name: str = "miniLM-L6-v2",
+        model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
         embedding_dim: int = 256,
         pooling_strategy: str = "mean",
         dropout: float = 0.1,
