@@ -24,7 +24,7 @@ preprocessing:
 
 # Model architecture
 model:
-  backbone: "bert-base-uncased" # or "distilbert-base-uncased" for faster training
+  backbone: "sentence-transformers/all-MiniLM-L6-v2" # or "distilbert-base-uncased" for faster training
   embedding_dim: 256 # Final embedding dimension (project from 768)
   pooling_strategy: "mean" # "mean" or "cls"
   dropout: 0.1
@@ -43,7 +43,7 @@ training:
   temperature: 0.05 # Temperature for InfoNCE loss
 
   # Mixed precision training
-  use_amp: false # Disable AMP for stability (enable if using GPU with tensor cores)
+  use_amp: true # Disable AMP for stability (enable if using GPU with tensor cores)
 
 # Evaluation settings
 evaluation:

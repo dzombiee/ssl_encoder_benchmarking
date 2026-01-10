@@ -113,7 +113,6 @@ def extract_embeddings(
     tokenizer,
     device,
     batch_size=64,  # Reduce batch size for extraction to save memory
-    model_type="simcse",
     max_length=256,
 ):
     """Extract embeddings for all items."""
@@ -157,7 +156,7 @@ def extract_embeddings(
 
 
 def train_ssl_model(
-    config_path: str, model_type: str, output_dir: str, resume_from: str | None = None
+    config_path: str, model_type: str, output_dir: str
 ):
     """
     Train an SSL model.
@@ -166,7 +165,6 @@ def train_ssl_model(
         config_path: Path to config file
         model_type: Type of model ('simcse', 'simclr', 'tsdae', 'mlm', 'multiview')
         output_dir: Output directory for checkpoints and embeddings
-        resume_from: Path to checkpoint to resume from
     """
     # Load config
     base_config = load_config("configs/base_config.yaml")
@@ -436,12 +434,6 @@ if __name__ == "__main__":
         required=True,
         help="Output directory for checkpoints and embeddings",
     )
-    parser.add_argument(
-        "--resume_from",
-        type=str,
-        default=None,
-        help="Path to checkpoint to resume from",
-    )
 
     args = parser.parse_args()
 
@@ -449,5 +441,4 @@ if __name__ == "__main__":
         config_path=args.config,
         model_type=args.model_type,
         output_dir=args.output_dir,
-        resume_from=args.resume_from,
     )

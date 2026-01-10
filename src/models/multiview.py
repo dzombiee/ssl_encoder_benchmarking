@@ -3,10 +3,12 @@ Multi-view Contrastive Learning.
 Treats different metadata fields (title, description, attributes) as separate views.
 """
 
+
 import torch  # type: ignore
 import torch.nn as nn  # type: ignore
 import torch.nn.functional as F  # type: ignore
 from .base_encoder import BaseEncoder  # type: ignore
+from typing import List, Optional
 
 
 class MultiViewContrastiveModel(nn.Module):
@@ -25,7 +27,7 @@ class MultiViewContrastiveModel(nn.Module):
         dropout: float = 0.1,
         temperature: float = 0.07,
         shared_encoder: bool = True,
-        view_names: list | None = None,
+        view_names: Optional[List[str]] = None,
     ):
         """
         Args:

@@ -14,6 +14,8 @@ nlpaug>=1.1.11
 
 # Sentence transformers (useful for TSDAE and SimCSE baselines)
 sentence-transformers>=2.2.0
+transformers>=4.30.0
+hf_xet
 
 # Utilities
 pyyaml>=6.0
