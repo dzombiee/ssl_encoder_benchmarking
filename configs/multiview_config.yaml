@@ -21,7 +21,7 @@ multiview:
   shared_encoder: true # Use same BERT for all views (recommended)
 
 training:
-  batch_size: 128 # Smaller batch due to multiple views
+  batch_size: 16 # Smaller batch due to multiple views
   num_epochs: 10
   temperature: 0.07
 

@@ -11,7 +11,7 @@ tsdae:
   tie_encoder_decoder: true # Share weights between encoder and decoder
 
 training:
-  batch_size: 128
+  batch_size: 32
   num_epochs: 10
   learning_rate_backbone: 3.0e-5
 
