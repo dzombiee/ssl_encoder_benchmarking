@@ -10,10 +10,14 @@ mlm:
   # 10% kept original (implicitly)
 
 training:
-  batch_size: 128
+  batch_size: 64
   num_epochs: 10
-  learning_rate_backbone: 5.0e-5
-  warmup_ratio: 0.1
+  learning_rate_backbone: 5.0e-5  # Higher LR for actual learning
+  learning_rate_head: 5.0e-4      # Higher LR for MLM head
+  warmup_steps: 100               # Reduced warmup for faster learning
+  weight_decay: 0.01
+  gradient_clip: 1.0
+  use_amp: true
 
   # MLM uses standard cross-entropy loss
   loss_type: "mlm_loss"

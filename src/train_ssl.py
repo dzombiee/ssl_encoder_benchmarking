@@ -5,7 +5,7 @@ Training script for SSL models.
 import argparse
 import torch  # type: ignore
 from torch.utils.data import DataLoader  # type: ignore
-from transformers import AutoTokenizer  # type: ignore
+from transformers import AutoTokenizer, get_linear_schedule_with_warmup  # type: ignore
 from pathlib import Path
 from tqdm import tqdm  # type: ignore
 
@@ -34,64 +34,82 @@ from utils.helpers import (
 )
 
 
-def train_epoch(model, dataloader, optimizer, device, model_type="simcse"):
+def train_epoch(model, dataloader, optimizer, scheduler, device, model_type="simcse"):
     """Train for one epoch."""
     model.train()
     loss_meter = AverageMeter()
 
+    use_amp = getattr(dataloader, 'use_amp', False)
+    scaler = torch.cuda.amp.GradScaler() if use_amp and device.type == "cuda" else None
+
     pbar = tqdm(dataloader, desc="Training")
     for batch_idx, batch in enumerate(pbar):
-        # Move to device
-        if model_type in ["simcse", "simclr"]:
-            input_ids = batch["input_ids"].to(device)
-            attention_mask = batch["attention_mask"].to(device)
-            num_views = batch["num_views"]
-
-            # Forward pass
-            loss, _ = model(input_ids, attention_mask, num_views)
-
-        elif model_type == "tsdae":
-            input_ids = batch["input_ids"].to(device)
-            attention_mask = batch["attention_mask"].to(device)
-            target_ids = batch["target_ids"].to(device)
-            target_attention_mask = batch["target_attention_mask"].to(device)
-
-            loss, _ = model(
-                input_ids, attention_mask, target_ids, target_attention_mask
-            )
-
-        elif model_type == "mlm":
-            input_ids = batch["input_ids"].to(device)
-            attention_mask = batch["attention_mask"].to(device)
-            labels = batch["labels"].to(device)
-
-            loss, _ = model(input_ids, attention_mask, labels)
-
-        elif model_type == "multiview":
-            views = {}
-            for view_name in batch["view_names"]:
-                views[view_name] = {
-                    "input_ids": batch["views"][view_name]["input_ids"].to(device),
-                    "attention_mask": batch["views"][view_name]["attention_mask"].to(
-                        device
-                    ),
-                }
-
-            loss, _ = model(views)
-
-        else:
-            raise ValueError(f"Unknown model type: {model_type}")
-
-        # Backward pass
         optimizer.zero_grad()
-        loss.backward()
+        if scaler:
+            with torch.cuda.amp.autocast(enabled=True):
+                if model_type in ["simcse", "simclr"]:
+                    input_ids = batch["input_ids"].to(device)
+                    attention_mask = batch["attention_mask"].to(device)
+                    num_views = batch["num_views"]
+                    loss, _ = model(input_ids, attention_mask, num_views)
+                elif model_type == "tsdae":
+                    input_ids = batch["input_ids"].to(device)
+                    attention_mask = batch["attention_mask"].to(device)
+                    target_ids = batch["target_ids"].to(device)
+                    target_attention_mask = batch["target_attention_mask"].to(device)
+                    loss, _ = model(input_ids, attention_mask, target_ids, target_attention_mask)
+                elif model_type == "mlm":
+                    input_ids = batch["input_ids"].to(device)
+                    attention_mask = batch["attention_mask"].to(device)
+                    labels = batch["labels"].to(device)
+                    loss, _ = model(input_ids, attention_mask, labels)
+                elif model_type == "multiview":
+                    views = {}
+                    for view_name in batch["view_names"]:
+                        views[view_name] = {
+                            "input_ids": batch["views"][view_name]["input_ids"].to(device),
+                            "attention_mask": batch["views"][view_name]["attention_mask"].to(device),
+                        }
+                    loss, _ = model(views)
+                else:
+                    raise ValueError(f"Unknown model type: {model_type}")
+            scaler.scale(loss).backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            scaler.step(optimizer)
+            scaler.update()
+            scheduler.step()
+        else:
+            if model_type in ["simcse", "simclr"]:
+                input_ids = batch["input_ids"].to(device)
+                attention_mask = batch["attention_mask"].to(device)
+                num_views = batch["num_views"]
+                loss, _ = model(input_ids, attention_mask, num_views)
+            elif model_type == "tsdae":
+                input_ids = batch["input_ids"].to(device)
+                attention_mask = batch["attention_mask"].to(device)
+                target_ids = batch["target_ids"].to(device)
+                target_attention_mask = batch["target_attention_mask"].to(device)
+                loss, _ = model(input_ids, attention_mask, target_ids, target_attention_mask)
+            elif model_type == "mlm":
+                input_ids = batch["input_ids"].to(device)
+                attention_mask = batch["attention_mask"].to(device)
+                labels = batch["labels"].to(device)
+                loss, _ = model(input_ids, attention_mask, labels)
+            elif model_type == "multiview":
+                views = {}
+                for view_name in batch["view_names"]:
+                    views[view_name] = {
+                        "input_ids": batch["views"][view_name]["input_ids"].to(device),
+                        "attention_mask": batch["views"][view_name]["attention_mask"].to(device),
+                    }
+                loss, _ = model(views)
+            else:
+                raise ValueError(f"Unknown model type: {model_type}")
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            optimizer.step()
+            scheduler.step()
 
-        # Gradient clipping
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-
-        optimizer.step()
-
-        # Update metrics
         loss_meter.update(
             loss.item(),
             batch["input_ids"].size(0)
@@ -100,7 +118,6 @@ def train_epoch(model, dataloader, optimizer, device, model_type="simcse"):
         )
         pbar.set_postfix({"loss": loss_meter.avg})
 
-        # Clear cache periodically to prevent memory accumulation
         if batch_idx % 50 == 0 and device.type == "cuda":
             torch.cuda.empty_cache()
 
@@ -326,7 +343,7 @@ def train_ssl_model(
     head_params = []
 
     for name, param in model.named_parameters():
-        if "bert" in name or "encoder" in name:
+        if "bert" in name:
             backbone_params.append(param)
         else:
             head_params.append(param)
@@ -342,12 +359,24 @@ def train_ssl_model(
         weight_decay=config["training"]["weight_decay"],
     )
 
+    num_epochs = config["training"]["num_epochs"]
+    
+    # Learning rate scheduler with warmup
+    num_training_steps = len(dataloader) * num_epochs
+    warmup_steps = config["training"].get("warmup_steps", 0)
+    scheduler = get_linear_schedule_with_warmup(
+        optimizer,
+        num_warmup_steps=warmup_steps,
+        num_training_steps=num_training_steps
+    )
+    print(f"  Learning rate scheduler: warmup={warmup_steps}, total_steps={num_training_steps}")
+
     # Training loop
     print(f"\n{'=' * 60}")
     print("Starting training...")
     print(f"{'=' * 60}\n")
 
-    num_epochs = config["training"]["num_epochs"]
+    
     best_loss = float("inf")
 
     for epoch in range(num_epochs):
@@ -355,7 +384,7 @@ def train_ssl_model(
         print("-" * 40)
 
         # Train
-        avg_loss = train_epoch(model, dataloader, optimizer, device, model_type)
+        avg_loss = train_epoch(model, dataloader, optimizer, scheduler, device, model_type)
 
         print(f"Average loss: {avg_loss:.4f}")
 
