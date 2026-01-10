@@ -85,25 +85,41 @@ class TFIDFBaseline:
         self.tfidf_matrix = None
         self.item_to_idx: Dict[str, int] = {}
 
-    def fit(self, items: List[Dict]):
+    def fit(self, train_items: List[Dict], all_items: List[Dict] = None):  # type: ignore
         """
-        Fit TF-IDF on item texts.
+        Fit TF-IDF on training items only, then transform all items.
+
+        This prevents data leakage by ensuring the vocabulary is learned
+        ONLY from warm/training items, not from cold/test items.
 
         Args:
-            items: List of item dictionaries with 'parent_asin' and 'full_text' keys
+            train_items: List of WARM item dictionaries (for learning vocabulary)
+            all_items: List of ALL item dictionaries (warm + cold) to transform.
+                      If None, only train_items are transformed.
         """
-        self.item_ids = [item["parent_asin"] for item in items]
-        texts = [item.get("full_text", "") for item in items]
+        if all_items is None:
+            all_items = train_items
 
-        # Fit TF-IDF
-        self.tfidf_matrix = self.vectorizer.fit_transform(texts)
+        # Extract texts
+        train_texts = [item.get("full_text", "") for item in train_items]
+        all_texts = [item.get("full_text", "") for item in all_items]
 
-        # Build item ID to index mapping
+        # FIT on warm items only (no leakage!)
+        print(
+            f"TFIDFBaseline: Fitting vocabulary on {len(train_items)} WARM items only..."
+        )
+        self.vectorizer.fit(train_texts)
+
+        # TRANSFORM all items (warm + cold)
+        print(f"TFIDFBaseline: Transforming {len(all_items)} total items...")
+        self.tfidf_matrix = self.vectorizer.transform(all_texts)
+
+        self.item_ids = [item["parent_asin"] for item in all_items]
         self.item_to_idx = {item_id: idx for idx, item_id in enumerate(self.item_ids)}
 
-        print(f"TFIDFBaseline: Fitted on {len(items)} items")
         print(f"  Vocabulary size: {len(self.vectorizer.vocabulary_)}")
         print(f"  TF-IDF matrix shape: {self.tfidf_matrix.shape}")  # type:ignore
+        print("  ✓ No data leakage - vocabulary from warm items only!")
 
     def get_embedding(self, item_id: str) -> np.ndarray:
         """Get TF-IDF vector for an item."""

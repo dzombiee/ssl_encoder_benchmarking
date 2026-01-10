@@ -47,26 +47,46 @@ def train_random_baseline(
     print(f"\n✓ Random embeddings saved: {embeddings_path}")
 
 
-def train_tfidf_baseline(metadata_path: str, output_dir: str, max_features: int = 5000):
-    """Train TF-IDF baseline."""
+def train_tfidf_baseline(
+    warm_metadata_path: str,
+    all_metadata_path: str,
+    output_dir: str,
+    max_features: int = 5000,
+):
+    """Train TF-IDF baseline with proper cold-start protocol.
+
+    Args:
+        warm_metadata_path: Path to WARM item metadata (for fitting vocabulary)
+        all_metadata_path: Path to ALL item metadata (warm + cold, for transformation)
+        output_dir: Output directory for embeddings
+        max_features: Maximum TF-IDF features
+    """
     print(f"\n{'=' * 60}")
-    print("Training TF-IDF Baseline")
+    print("Training TF-IDF Baseline (Cold-Start Protocol)")
     print(f"{'=' * 60}\n")
 
-    # Load items
-    print("Loading items...")
-    items = []
-    with open(metadata_path, "r") as f:
+    # Load warm items (for vocabulary)
+    print("Loading WARM items (for vocabulary learning)...")
+    warm_items = []
+    with open(warm_metadata_path, "r") as f:
         for line in f:
             item = json.loads(line.strip())
-            items.append(item)
+            warm_items.append(item)
+    print(f"  {len(warm_items)} warm items")
 
-    print(f"  {len(items)} items")
+    # Load all items (for transformation)
+    print("\nLoading ALL items (for transformation)...")
+    all_items = []
+    with open(all_metadata_path, "r") as f:
+        for line in f:
+            item = json.loads(line.strip())
+            all_items.append(item)
+    print(f"  {len(all_items)} total items (warm + cold)")
 
-    # Fit TF-IDF
-    print("\nFitting TF-IDF...")
+    # Fit TF-IDF on warm, transform all
+    print("\nFitting TF-IDF on WARM items only...")
     baseline = TFIDFBaseline(max_features=max_features, ngram_range=(1, 2))
-    baseline.fit(items)
+    baseline.fit(train_items=warm_items, all_items=all_items)
 
     # Save embeddings
     output_path = Path(output_dir)
@@ -146,8 +166,13 @@ if __name__ == "__main__":
             seed=config["split"]["random_seed"],
         )
     elif args.baseline_type == "tfidf":
+        # For TF-IDF, we need both warm and all metadata to prevent leakage
+        warm_metadata = args.metadata_path.replace(
+            "item_metadata.jsonl", "warm_item_metadata.jsonl"
+        )
         train_tfidf_baseline(
-            metadata_path=args.metadata_path,
+            warm_metadata_path=warm_metadata,
+            all_metadata_path=args.metadata_path,
             output_dir=args.output_dir,
             max_features=5000,
         )
