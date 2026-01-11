@@ -23,7 +23,7 @@ ENV/
 # Experiment outputs
 experiments/*/
 !experiments/.gitkeep
-data/*.jsonl
+# data/*.jsonl
 data/processed/
 *.npz
 *.pkl
