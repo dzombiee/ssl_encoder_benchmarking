@@ -15,6 +15,6 @@ simclr:
   crop_ratio_max: 0.95
 
 training:
-  batch_size: 64
+  batch_size: 128
   num_epochs: 10
   temperature: 0.1 # Slightly higher for text augmentations
