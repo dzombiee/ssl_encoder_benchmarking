@@ -79,6 +79,9 @@ def train_epoch(model, dataloader, optimizer, scheduler, device, model_type="sim
                     loss, _ = model(views)
                 else:
                     raise ValueError(f"Unknown model type: {model_type}")
+            # DataParallel returns vector of losses, need to average
+            if loss.dim() > 0:
+                loss = loss.mean()
             scaler.scale(loss).backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             scaler.step(optimizer)
@@ -115,6 +118,9 @@ def train_epoch(model, dataloader, optimizer, scheduler, device, model_type="sim
                 loss, _ = model(views)
             else:
                 raise ValueError(f"Unknown model type: {model_type}")
+            # DataParallel returns vector of losses, need to average
+            if loss.dim() > 0:
+                loss = loss.mean()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
