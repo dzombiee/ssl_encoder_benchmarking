@@ -317,9 +317,15 @@ def train_ssl_model(config_path: str, model_type: str, output_dir: str):
 
     # Use a common base type for all model variants
     from typing import Union
+    from torch.nn import DataParallel
 
     model: Union[
-        SimCSEModel, SimCLRModel, TSDAEModel, MLMModel, MultiViewContrastiveModel
+        SimCSEModel,
+        SimCLRModel,
+        TSDAEModel,
+        MLMModel,
+        MultiViewContrastiveModel,
+        DataParallel,
     ]
     if model_type == "simcse":
         model = SimCSEModel(
@@ -350,9 +356,30 @@ def train_ssl_model(config_path: str, model_type: str, output_dir: str):
 
     model = model.to(device)
 
+    # Multi-GPU support
+    if torch.cuda.device_count() > 1:
+        print(f"  Using {torch.cuda.device_count()} GPUs!")
+        model = torch.nn.DataParallel(model)
+    elif torch.cuda.is_available():
+        print("  Using 1 GPU")
+
     # Count parameters
-    num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"  Trainable parameters: {num_params:,}")
+
+    import torch.nn as nn
+
+    # Ensure base_model is a nn.Module before accessing parameters
+    if isinstance(model, nn.DataParallel):
+        base_model = model.module
+    elif isinstance(model, nn.Module):
+        base_model = model
+    else:
+        base_model = None
+
+    if base_model is not None and hasattr(base_model, "parameters"):
+        num_params = sum(p.numel() for p in base_model.parameters() if p.requires_grad)
+        print(f"  Trainable parameters: {num_params:,}")
+    else:
+        print("  Could not determine trainable parameters (model is not a nn.Module)")
 
     # Optimizer
     print("\nCreating optimizer...")
@@ -411,41 +438,62 @@ def train_ssl_model(config_path: str, model_type: str, output_dir: str):
         # Save checkpoint
         if (epoch + 1) % config["experiment"]["checkpoint_interval"] == 0:
             checkpoint_path = output_path / f"checkpoint_epoch_{epoch + 1}.pt"
-            torch.save(
-                {
-                    "epoch": epoch + 1,
-                    "model_state_dict": model.state_dict(),
-                    "optimizer_state_dict": optimizer.state_dict(),
-                    "loss": avg_loss,
-                    "config": config,
-                },
-                checkpoint_path,
-            )
-            print(f"Checkpoint saved: {checkpoint_path}")
+            # Save unwrapped model if using DataParallel
+            model_to_save = model.module if hasattr(model, "module") else model
+            import torch.nn as nn
+
+            if isinstance(model_to_save, nn.Module):
+                torch.save(
+                    {
+                        "epoch": epoch + 1,
+                        "model_state_dict": model_to_save.state_dict(),
+                        "optimizer_state_dict": optimizer.state_dict(),
+                        "loss": avg_loss,
+                        "config": config,
+                    },
+                    checkpoint_path,
+                )
+                print(f"Checkpoint saved: {checkpoint_path}")
+            else:
+                print(
+                    "Warning: model_to_save is not a nn.Module, checkpoint not saved."
+                )
 
         # Save best model
         if avg_loss < best_loss:
             best_loss = avg_loss
             best_model_path = output_path / "best_model.pt"
-            torch.save(
-                {
-                    "epoch": epoch + 1,
-                    "model_state_dict": model.state_dict(),
-                    "optimizer_state_dict": optimizer.state_dict(),
-                    "loss": avg_loss,
-                    "config": config,
-                },
-                best_model_path,
-            )
-            print(f"✓ Best model saved (loss: {best_loss:.4f})")
+            # Save unwrapped model if using DataParallel
+            model_to_save = model.module if hasattr(model, "module") else model
+            import torch.nn as nn
+
+            if isinstance(model_to_save, nn.Module):
+                torch.save(
+                    {
+                        "epoch": epoch + 1,
+                        "model_state_dict": model_to_save.state_dict(),
+                        "optimizer_state_dict": optimizer.state_dict(),
+                        "loss": avg_loss,
+                        "config": config,
+                    },
+                    best_model_path,
+                )
+                print(f"✓ Best model saved (loss: {best_loss:.4f})")
+            else:
+                print(
+                    "Warning: model_to_save is not a nn.Module, best model not saved."
+                )
 
     # Extract embeddings
     print(f"\n{'=' * 60}")
     print("Extracting embeddings...")
     print(f"{'=' * 60}\n")
 
+    # Use unwrapped model for embedding extraction
+    model_for_inference = model.module if hasattr(model, "module") else model
+
     embeddings = extract_embeddings(
-        model=model,
+        model=model_for_inference,
         dataset=metadata_dataset,
         tokenizer=tokenizer,
         device=device,
