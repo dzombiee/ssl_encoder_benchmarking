@@ -33,14 +33,14 @@ model:
 training:
   batch_size: 16 # Reduced for memory efficiency (increase to 128-256 if GPU memory allows)
   learning_rate_backbone: 2.0e-5 # LR for BERT backbone
-  learning_rate_head: 1.0e-3 # LR for projection head
+  learning_rate_head: 1.0e-4 # LR for projection head (FIXED: was 1e-3, too high!)
   num_epochs: 10
   warmup_steps: 500
   weight_decay: 0.01
   gradient_clip: 1.0
 
   # Contrastive loss settings
-  temperature: 0.05 # Temperature for InfoNCE loss
+  temperature: 0.07 # Temperature for InfoNCE loss (FIXED: was 0.05, too low)
 
   # Mixed precision training
   use_amp: true # Disable AMP for stability (enable if using GPU with tensor cores)

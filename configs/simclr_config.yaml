@@ -15,6 +15,6 @@ simclr:
   crop_ratio_max: 0.95
 
 training:
-  batch_size: 64
-  num_epochs: 10
-  temperature: 0.1 # Slightly higher for text augmentations
+  batch_size: 64 # Increased for better negative sampling
+  num_epochs: 2 # More epochs for convergence
+  temperature: 0.07 # Lower temperature for harder negatives
