@@ -15,6 +15,12 @@ simclr:
   crop_ratio_max: 0.95
 
 training:
-  batch_size: 64 # Increased for better negative sampling
-  num_epochs: 2 # More epochs for convergence
-  temperature: 0.07 # Lower temperature for harder negatives
+  batch_size: 64
+  num_epochs: 5
+  temperature: 0.07
+  learning_rate_backbone: 1.0e-5 # Lower for pre-trained SBERT
+  learning_rate_head: 5.0e-5 # Lower for fine-tuning
+  warmup_steps: 500
+  weight_decay: 0.01
+  gradient_clip: 1.0
+  use_amp: true

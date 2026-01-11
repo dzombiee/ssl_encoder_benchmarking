@@ -21,9 +21,15 @@ multiview:
   shared_encoder: true # Use same BERT for all views (recommended)
 
 training:
-  batch_size: 16 # Smaller batch due to multiple views
-  num_epochs: 10
+  batch_size: 32
+  num_epochs: 5
   temperature: 0.07
+  learning_rate_backbone: 1.0e-5 # Lower for pre-trained SBERT
+  learning_rate_head: 5.0e-5 # Lower for fine-tuning
+  warmup_steps: 500
+  weight_decay: 0.01
+  gradient_clip: 1.0
+  use_amp: true
 
   # Loss weighting for different view pairs
   loss_weights:

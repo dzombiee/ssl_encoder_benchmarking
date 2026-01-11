@@ -32,12 +32,15 @@ model:
 # Training settings
 training:
   batch_size: 16 # Reduced for memory efficiency (increase to 128-256 if GPU memory allows)
-  learning_rate_backbone: 2.0e-5 # LR for BERT backbone
-  learning_rate_head: 1.0e-4 # LR for projection head (FIXED: was 1e-3, too high!)
+  learning_rate_backbone: 1.0e-5 # Lower for pre-trained SBERT (was 2e-5)
+  learning_rate_head: 5.0e-5 # Lower for projection head (was 1e-4)
   num_epochs: 10
   warmup_steps: 500
   weight_decay: 0.01
   gradient_clip: 1.0
+
+  # Quick testing (set to 0.1 to use 10% of data for faster iterations)
+  sample_fraction: 1.0 # 1.0 = use all data, 0.1 = use 10% for quick tests
 
   # Contrastive loss settings
   temperature: 0.07 # Temperature for InfoNCE loss (FIXED: was 0.05, too low)

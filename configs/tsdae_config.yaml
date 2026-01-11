@@ -11,9 +11,14 @@ tsdae:
   tie_encoder_decoder: true # Share weights between encoder and decoder
 
 training:
-  batch_size: 32
-  num_epochs: 10
-  learning_rate_backbone: 3.0e-5
+  batch_size: 64
+  num_epochs: 5
+  learning_rate_backbone: 1.0e-5 # Lower for pre-trained SBERT
+  learning_rate_head: 5.0e-5 # Lower for decoder
+  warmup_steps: 500
+  weight_decay: 0.01
+  gradient_clip: 1.0
+  use_amp: true
 
   # TSDAE uses reconstruction loss, not contrastive
   loss_type: "cross_entropy"

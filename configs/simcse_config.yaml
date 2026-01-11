@@ -9,12 +9,12 @@ simcse:
   dropout_rate: 0.1 # Dropout rate for creating positive pairs
 
 training:
-  batch_size: 16 # SimCSE benefits from larger batches but reduced for memory safety
+  batch_size: 64
   num_epochs: 5
-  temperature: 0.05
-  learning_rate_backbone: 3.0e-5  # Lower LR for backbone
-  learning_rate_head: 5.0e-4      # Higher LR for projection head
-  warmup_steps: 500               # Add warmup steps for scheduler
+  temperature: 0.07
+  learning_rate_backbone: 1.0e-5 # Lower for pre-trained SBERT
+  learning_rate_head: 5.0e-5 # Lower for fine-tuning
+  warmup_steps: 500
   weight_decay: 0.01
   gradient_clip: 1.0
-  use_amp: true                   # Enable mixed precision if supported
+  use_amp: true

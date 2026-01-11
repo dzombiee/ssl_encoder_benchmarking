@@ -11,10 +11,10 @@ mlm:
 
 training:
   batch_size: 64
-  num_epochs: 10
-  learning_rate_backbone: 5.0e-5 # Higher LR for actual learning
-  learning_rate_head: 5.0e-4 # Higher LR for MLM head
-  warmup_steps: 100 # Reduced warmup for faster learning
+  num_epochs: 5
+  learning_rate_backbone: 1.0e-5 # Lower for pre-trained SBERT
+  learning_rate_head: 5.0e-5 # Lower for MLM head
+  warmup_steps: 500
   weight_decay: 0.01
   gradient_clip: 1.0
   use_amp: true

@@ -23,6 +23,7 @@ class ItemMetadataDataset(Dataset):
         tokenizer: PreTrainedTokenizer,
         max_length: int = 256,
         text_field: str = "full_text",
+        sample_fraction: float = 1.0,  # NEW: fraction of data to use (0.0-1.0)
     ):
         """
         Args:
@@ -30,6 +31,7 @@ class ItemMetadataDataset(Dataset):
             tokenizer: HuggingFace tokenizer
             max_length: Maximum sequence length
             text_field: Which text field to use ('full_text', 'title', 'description')
+            sample_fraction: Fraction of data to sample (default 1.0 = use all)
         """
         self.tokenizer = tokenizer
         self.max_length = max_length
@@ -43,7 +45,17 @@ class ItemMetadataDataset(Dataset):
                 if item.get(text_field, "").strip():  # Only keep items with text
                     self.items.append(item)
 
-        print(f"Loaded {len(self.items)} items from {metadata_path}")
+        # Sample if requested
+        if sample_fraction < 1.0:
+            original_size = len(self.items)
+            random.seed(42)  # Reproducible sampling
+            sample_size = max(1, int(len(self.items) * sample_fraction))
+            self.items = random.sample(self.items, sample_size)
+            print(
+                f"Sampled {len(self.items)}/{original_size} items ({sample_fraction * 100:.1f}%)"
+            )
+        else:
+            print(f"Loaded {len(self.items)} items from {metadata_path}")
 
     def __len__(self):
         return len(self.items)

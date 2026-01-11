@@ -225,11 +225,17 @@ def train_ssl_model(config_path: str, model_type: str, output_dir: str):
     print("\nLoading metadata...")
     data_dir = Path(config["data"]["output_dir"])
     metadata_path = data_dir / "item_metadata.jsonl"
+    
+    # Check if sampling is requested
+    sample_fraction = config.get("training", {}).get("sample_fraction", 1.0)
+    if sample_fraction < 1.0:
+        print(f"⚡ Quick test mode: Using {sample_fraction*100:.0f}% of data")
 
     metadata_dataset = ItemMetadataDataset(
         metadata_path=str(metadata_path),
         tokenizer=tokenizer,
         max_length=config["preprocessing"]["max_text_length"],
+        sample_fraction=sample_fraction,
     )
 
     # Fix: Use a union type for dataset variable
