@@ -39,7 +39,7 @@ def train_epoch(model, dataloader, optimizer, scheduler, device, model_type="sim
     model.train()
     loss_meter = AverageMeter()
 
-    use_amp = getattr(dataloader, 'use_amp', False)
+    use_amp = getattr(dataloader, "use_amp", False)
     scaler = torch.cuda.amp.GradScaler() if use_amp and device.type == "cuda" else None
 
     pbar = tqdm(dataloader, desc="Training")
@@ -57,7 +57,9 @@ def train_epoch(model, dataloader, optimizer, scheduler, device, model_type="sim
                     attention_mask = batch["attention_mask"].to(device)
                     target_ids = batch["target_ids"].to(device)
                     target_attention_mask = batch["target_attention_mask"].to(device)
-                    loss, _ = model(input_ids, attention_mask, target_ids, target_attention_mask)
+                    loss, _ = model(
+                        input_ids, attention_mask, target_ids, target_attention_mask
+                    )
                 elif model_type == "mlm":
                     input_ids = batch["input_ids"].to(device)
                     attention_mask = batch["attention_mask"].to(device)
@@ -67,8 +69,12 @@ def train_epoch(model, dataloader, optimizer, scheduler, device, model_type="sim
                     views = {}
                     for view_name in batch["view_names"]:
                         views[view_name] = {
-                            "input_ids": batch["views"][view_name]["input_ids"].to(device),
-                            "attention_mask": batch["views"][view_name]["attention_mask"].to(device),
+                            "input_ids": batch["views"][view_name]["input_ids"].to(
+                                device
+                            ),
+                            "attention_mask": batch["views"][view_name][
+                                "attention_mask"
+                            ].to(device),
                         }
                     loss, _ = model(views)
                 else:
@@ -89,7 +95,9 @@ def train_epoch(model, dataloader, optimizer, scheduler, device, model_type="sim
                 attention_mask = batch["attention_mask"].to(device)
                 target_ids = batch["target_ids"].to(device)
                 target_attention_mask = batch["target_attention_mask"].to(device)
-                loss, _ = model(input_ids, attention_mask, target_ids, target_attention_mask)
+                loss, _ = model(
+                    input_ids, attention_mask, target_ids, target_attention_mask
+                )
             elif model_type == "mlm":
                 input_ids = batch["input_ids"].to(device)
                 attention_mask = batch["attention_mask"].to(device)
@@ -100,7 +108,9 @@ def train_epoch(model, dataloader, optimizer, scheduler, device, model_type="sim
                 for view_name in batch["view_names"]:
                     views[view_name] = {
                         "input_ids": batch["views"][view_name]["input_ids"].to(device),
-                        "attention_mask": batch["views"][view_name]["attention_mask"].to(device),
+                        "attention_mask": batch["views"][view_name][
+                            "attention_mask"
+                        ].to(device),
                     }
                 loss, _ = model(views)
             else:
@@ -216,7 +226,11 @@ def train_ssl_model(config_path: str, model_type: str, output_dir: str):
         max_length=config["preprocessing"]["max_text_length"],
     )
 
-    # Create dataset based on model type
+    # Fix: Use a union type for dataset variable
+    from typing import Union
+
+    dataset: Union[ContrastiveDataset, ItemMetadataDataset, MultiViewDataset]
+
     print(f"\nCreating {model_type} dataset...")
 
     if model_type == "simcse":
@@ -301,6 +315,12 @@ def train_ssl_model(config_path: str, model_type: str, output_dir: str):
         "dropout": config["model"]["dropout"],
     }
 
+    # Use a common base type for all model variants
+    from typing import Union
+
+    model: Union[
+        SimCSEModel, SimCLRModel, TSDAEModel, MLMModel, MultiViewContrastiveModel
+    ]
     if model_type == "simcse":
         model = SimCSEModel(
             **model_kwargs, temperature=config["training"]["temperature"]
@@ -359,23 +379,22 @@ def train_ssl_model(config_path: str, model_type: str, output_dir: str):
     )
 
     num_epochs = config["training"]["num_epochs"]
-    
+
     # Learning rate scheduler with warmup
     num_training_steps = len(dataloader) * num_epochs
     warmup_steps = config["training"].get("warmup_steps", 0)
     scheduler = get_linear_schedule_with_warmup(
-        optimizer,
-        num_warmup_steps=warmup_steps,
-        num_training_steps=num_training_steps
+        optimizer, num_warmup_steps=warmup_steps, num_training_steps=num_training_steps
     )
-    print(f"  Learning rate scheduler: warmup={warmup_steps}, total_steps={num_training_steps}")
+    print(
+        f"  Learning rate scheduler: warmup={warmup_steps}, total_steps={num_training_steps}"
+    )
 
     # Training loop
     print(f"\n{'=' * 60}")
     print("Starting training...")
     print(f"{'=' * 60}\n")
 
-    
     best_loss = float("inf")
 
     for epoch in range(num_epochs):
@@ -383,7 +402,9 @@ def train_ssl_model(config_path: str, model_type: str, output_dir: str):
         print("-" * 40)
 
         # Train
-        avg_loss = train_epoch(model, dataloader, optimizer, scheduler, device, model_type)
+        avg_loss = train_epoch(
+            model, dataloader, optimizer, scheduler, device, model_type
+        )
 
         print(f"Average loss: {avg_loss:.4f}")
 
@@ -429,7 +450,6 @@ def train_ssl_model(config_path: str, model_type: str, output_dir: str):
         tokenizer=tokenizer,
         device=device,
         batch_size=batch_size,
-        model_type=model_type,
         max_length=config["preprocessing"]["max_text_length"],
     )
 
