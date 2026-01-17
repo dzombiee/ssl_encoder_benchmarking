@@ -32,8 +32,8 @@ model:
 # Training settings
 training:
   batch_size: 16 # Reduced for memory efficiency (increase to 128-256 if GPU memory allows)
-  learning_rate_backbone: 1.0e-5 # Lower for pre-trained SBERT (was 2e-5)
-  learning_rate_head: 5.0e-5 # Lower for projection head (was 1e-4)
+  learning_rate_backbone: 3.0e-5 # Optimal for pre-trained SBERT fine-tuning
+  learning_rate_head: 1.0e-4 # Higher for projection head to learn faster
   num_epochs: 10
   warmup_steps: 500
   weight_decay: 0.01

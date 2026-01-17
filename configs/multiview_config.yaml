@@ -24,8 +24,8 @@ training:
   batch_size: 32
   num_epochs: 5
   temperature: 0.07
-  learning_rate_backbone: 1.0e-5 # Lower for pre-trained SBERT
-  learning_rate_head: 5.0e-5 # Lower for fine-tuning
+  learning_rate_backbone: 3.0e-5 # Moderate for multi-view contrastive alignment
+  learning_rate_head: 1.0e-4 # Higher for projection head across views
   warmup_steps: 500
   weight_decay: 0.01
   gradient_clip: 1.0
