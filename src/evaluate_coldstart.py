@@ -92,6 +92,38 @@ def evaluate_cold_start(
     print("\nComputing item popularity...")
     item_popularity = compute_item_popularity(train_interactions_path)
 
+    # Check user history coverage
+    print("\nVerifying user history coverage...")
+    total_history_items = 0
+    missing_embeddings = 0
+    users_with_missing = 0
+
+    for user_id, user_history in train_histories.items():
+        user_missing = 0
+        for item_id in user_history:
+            total_history_items += 1
+            if item_id not in item_embeddings:
+                missing_embeddings += 1
+                user_missing += 1
+        if user_missing > 0:
+            users_with_missing += 1
+
+    coverage = (
+        100.0 * (total_history_items - missing_embeddings) / total_history_items
+        if total_history_items > 0
+        else 0
+    )
+    print(f"  Total items in user histories: {total_history_items}")
+    print(f"  Items with embeddings: {total_history_items - missing_embeddings}")
+    print(f"  Items missing embeddings: {missing_embeddings}")
+    print(f"  Coverage: {coverage:.2f}%")
+    print(f"  Users affected: {users_with_missing}/{len(train_histories)}")
+
+    if missing_embeddings > 0:
+        print(
+            f"  ⚠️  WARNING: {missing_embeddings} items in user histories have no embeddings!"
+        )
+
     # Initialize recommender
     print("\nInitializing recommender...")
     recommender = ZeroShotDotProductRecommender(

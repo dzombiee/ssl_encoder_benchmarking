@@ -9,26 +9,33 @@ from transformers import AutoModel, AutoConfig  # type: ignore
 
 class BaseEncoder(nn.Module):
     """
-    Base encoder with BERT backbone and projection head.
+    Base encoder with BERT backbone and optional projection head.
+
+    For fair comparison with SBERT baseline:
+    - use_projection_head=False: Output 384 dims (same as SBERT)
+    - use_projection_head=True: Output custom dims with projection
     """
 
     def __init__(
         self,
         model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
-        embedding_dim: int = 256,
+        embedding_dim: int = 384,
         pooling_strategy: str = "mean",
         dropout: float = 0.1,
+        use_projection_head: bool = False,
     ):
         """
         Args:
             model_name: HuggingFace model name
-            embedding_dim: Output embedding dimension
+            embedding_dim: Output embedding dimension (ignored if use_projection_head=False)
             pooling_strategy: How to pool token embeddings ('mean' or 'cls')
             dropout: Dropout rate
+            use_projection_head: If False, output = pooled BERT (for fair SBERT comparison)
         """
         super().__init__()
 
         self.pooling_strategy = pooling_strategy
+        self.use_projection_head = use_projection_head
 
         # Load BERT model
         self.config = AutoConfig.from_pretrained(model_name)
@@ -37,13 +44,20 @@ class BaseEncoder(nn.Module):
         # Get BERT hidden size
         self.hidden_size = self.config.hidden_size
 
-        # Projection head (BERT hidden -> embedding_dim)
-        self.projection_head = nn.Sequential(
-            nn.Linear(self.hidden_size, self.hidden_size),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(self.hidden_size, embedding_dim),
-        )
+        # Set output dimension
+        if use_projection_head:
+            self.output_dim = embedding_dim
+            # Projection head (BERT hidden -> embedding_dim)
+            self.projection_head: nn.Sequential | None = nn.Sequential(
+                nn.Linear(self.hidden_size, self.hidden_size),
+                nn.ReLU(),
+                nn.Dropout(dropout),
+                nn.Linear(self.hidden_size, embedding_dim),
+            )
+        else:
+            # No projection: output = BERT hidden size (384 for all-MiniLM-L6-v2)
+            self.output_dim = self.hidden_size
+            self.projection_head: nn.Sequential | None = None
 
     def forward(self, input_ids, attention_mask, return_hidden=False):
         """
@@ -78,8 +92,11 @@ class BaseEncoder(nn.Module):
         else:
             raise ValueError(f"Unknown pooling strategy: {self.pooling_strategy}")
 
-        # Project to embedding dimension
-        embeddings = self.projection_head(pooled)
+        # Project to embedding dimension (if projection head enabled)
+        if self.projection_head is not None:
+            embeddings = self.projection_head(pooled)
+        else:
+            embeddings = pooled  # No projection, use pooled BERT directly
 
         if return_hidden:
             return embeddings, pooled
@@ -98,10 +115,11 @@ class BaseEncoder(nn.Module):
             embeddings: L2-normalized embeddings
         """
         embeddings = self.forward(input_ids, attention_mask)
-
+        # If forward returns a tuple, extract embeddings
+        if isinstance(embeddings, tuple):
+            embeddings = embeddings[0]
         if normalize:
             embeddings = nn.functional.normalize(embeddings, p=2, dim=1)
-
         return embeddings
 
 

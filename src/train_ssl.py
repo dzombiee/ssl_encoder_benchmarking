@@ -327,7 +327,14 @@ def train_ssl_model(config_path: str, model_type: str, output_dir: str):
         "embedding_dim": config["model"]["embedding_dim"],
         "pooling_strategy": config["model"]["pooling_strategy"],
         "dropout": config["model"]["dropout"],
+        "use_projection_head": config["model"].get("use_projection_head", False),
     }
+
+    print(f"  Backbone: {config['model']['backbone']}")
+    print(
+        f"  Projection head: {'Enabled' if model_kwargs['use_projection_head'] else 'Disabled'}"
+    )
+    print(f"  Output dimension: {config['model']['embedding_dim']}")
 
     # Use a common base type for all model variants
     from typing import Union

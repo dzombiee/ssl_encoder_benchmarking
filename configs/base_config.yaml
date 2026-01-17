@@ -24,16 +24,17 @@ preprocessing:
 
 # Model architecture
 model:
-  backbone: "sentence-transformers/all-MiniLM-L6-v2" # or "distilbert-base-uncased" for faster training
-  embedding_dim: 256 # Final embedding dimension (project from 768)
+  backbone: "sentence-transformers/all-MiniLM-L6-v2" # Pre-trained sentence transformer
+  embedding_dim: 384 # Same as backbone output (no projection head for fair comparison with SBERT)
   pooling_strategy: "mean" # "mean" or "cls"
   dropout: 0.1
+  use_projection_head: false # Set to true if you want 384→256 projection
 
 # Training settings
 training:
   batch_size: 16 # Reduced for memory efficiency (increase to 128-256 if GPU memory allows)
-  learning_rate_backbone: 3.0e-5 # Optimal for pre-trained SBERT fine-tuning
-  learning_rate_head: 1.0e-4 # Higher for projection head to learn faster
+  learning_rate_backbone: 2.0e-5 # Fine-tune pre-trained SBERT with SSL objectives
+  learning_rate_head: 1.0e-4 # Only used if projection head is enabled
   num_epochs: 10
   warmup_steps: 500
   weight_decay: 0.01
@@ -43,10 +44,10 @@ training:
   sample_fraction: 1.0 # 1.0 = use all data, 0.1 = use 10% for quick tests
 
   # Contrastive loss settings
-  temperature: 0.07 # Temperature for InfoNCE loss (FIXED: was 0.05, too low)
+  temperature: 0.07 # Temperature for InfoNCE loss (0.05-0.1 is typical)
 
   # Mixed precision training
-  use_amp: true # Disable AMP for stability (enable if using GPU with tensor cores)
+  use_amp: true # Enable for faster training on compatible GPUs
 
 # Evaluation settings
 evaluation:

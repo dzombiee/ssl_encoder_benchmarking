@@ -18,8 +18,58 @@ This project benchmarks **five Self-Supervised Learning (SSL)** item encoders tr
 
 - **Random Embeddings**: Random normalized vectors
 - **TF-IDF**: Classic content-based approach
+- **Sentence-BERT**: Pre-trained sentence transformer (all-MiniLM-L6-v2)
+- **Vanilla BERT**: Same backbone as SSL models, no SSL pre-training (for fair comparison)
 
-## 🏗️ Project Structure
+## 🔍 Model Architecture & Fair Comparison
+
+### Unified Backbone: sentence-transformers/all-MiniLM-L6-v2
+
+All models now use the **same backbone** (`sentence-transformers/all-MiniLM-L6-v2`) for fair comparison:
+
+- **SSL Models (SimCSE, SimCLR, TSDAE, MLM, Multi-View)**: 
+  - Use `all-MiniLM-L6-v2` backbone + projection head (384 → 256 dims)
+  - Trained with SSL objectives on your metadata
+  
+- **Sentence-BERT Baseline**: 
+  - Uses `sentence-transformers/all-MiniLM-L6-v2` (pre-trained on 1B+ sentence pairs)
+  - **No additional training** on your data
+  
+- **Vanilla BERT Baseline** (NEW):
+  - Uses `all-MiniLM-L6-v2` backbone with mean pooling
+  - **No SSL pre-training**, no projection head
+  - Pure baseline for comparison
+
+### Why This Matters
+
+Previously, SBERT used a model pre-trained on billions of sentence pairs while SSL models started from scratch. This created an **unfair advantage** for SBERT. Now:
+
+✅ Same backbone across all models  
+✅ Fair comparison of SSL objectives  
+✅ Vanilla BERT shows the baseline performance without SSL  
+
+### Model Checkpoints vs. Embeddings
+
+**Training Pipeline:**
+```
+1. Train SSL model → Save checkpoint (best_model.pt)
+2. Extract embeddings → Save embeddings (item_embeddings.npz)
+3. Evaluation uses → Pre-computed embeddings (NOT checkpoint)
+```
+
+**Important Notes:**
+- **Checkpoints (`.pt` files)**: Saved for resuming training or generating new embeddings
+- **Embeddings (`.npz` files)**: Pre-computed item embeddings used directly in evaluation
+- **Evaluation**: Uses dot-product similarity between pre-computed embeddings (no model inference)
+- **Why**: Fast evaluation without loading heavy transformer models for each user
+
+**To generate new embeddings from a checkpoint:**
+```bash
+python src/train_ssl.py --model_type simcse --config configs/simclr_config.yaml \
+    --output_dir experiments/simcse --resume_from experiments/simcse/best_model.pt
+```
+
+## 📊 Baselines
 
 ```
 Research_New/

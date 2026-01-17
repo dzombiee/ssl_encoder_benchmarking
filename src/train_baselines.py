@@ -10,6 +10,7 @@ from models.baselines import (
     RandomEmbeddingBaseline,
     TFIDFBaseline,
     SentenceBERTBaseline,
+    VanillaBERTBaseline,
 )
 from utils.helpers import load_config, save_embeddings
 
@@ -99,7 +100,9 @@ def train_tfidf_baseline(
 
 
 def train_sbert_baseline(
-    metadata_path: str, output_dir: str, model_name: str = "all-MiniLM-L6-v2"
+    metadata_path: str,
+    output_dir: str,
+    model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
 ):
     """Train Sentence-BERT baseline."""
     print(f"\n{'=' * 60}")
@@ -131,13 +134,48 @@ def train_sbert_baseline(
     print(f"\n✓ Sentence-BERT embeddings saved: {embeddings_path}")
 
 
+def train_vanilla_bert_baseline(
+    metadata_path: str,
+    output_dir: str,
+    model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
+):
+    """Train vanilla BERT baseline (no SSL pre-training)."""
+    print(f"\n{'=' * 60}")
+    print("Training Vanilla BERT Baseline")
+    print(f"{'=' * 60}\n")
+
+    # Load items
+    print("Loading items...")
+    items = []
+    with open(metadata_path, "r") as f:
+        for line in f:
+            item = json.loads(line.strip())
+            items.append(item)
+
+    print(f"  {len(items)} items")
+
+    # Encode with Vanilla BERT
+    print(f"\nEncoding with Vanilla BERT ({model_name})...")
+    baseline = VanillaBERTBaseline(model_name=model_name)
+    baseline.fit(items)
+
+    # Save embeddings
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    embeddings_path = output_path / "item_embeddings.npz"
+    save_embeddings(baseline.get_embeddings(), str(embeddings_path))
+
+    print(f"\n✓ Vanilla BERT embeddings saved: {embeddings_path}")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train baseline models")
     parser.add_argument(
         "--baseline_type",
         type=str,
         required=True,
-        choices=["random", "tfidf", "sbert"],
+        choices=["random", "tfidf", "sbert", "vanilla_bert"],
         help="Type of baseline",
     )
     parser.add_argument(
@@ -180,5 +218,11 @@ if __name__ == "__main__":
         train_sbert_baseline(
             metadata_path=args.metadata_path,
             output_dir=args.output_dir,
-            model_name="all-MiniLM-L6-v2",
+            model_name="sentence-transformers/all-MiniLM-L6-v2",
+        )
+    elif args.baseline_type == "vanilla_bert":
+        train_vanilla_bert_baseline(
+            metadata_path=args.metadata_path,
+            output_dir=args.output_dir,
+            model_name="sentence-transformers/all-MiniLM-L6-v2",
         )
