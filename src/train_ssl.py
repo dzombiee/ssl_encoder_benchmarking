@@ -38,6 +38,7 @@ def train_epoch(model, dataloader, optimizer, scheduler, device, model_type="sim
     """Train for one epoch."""
     model.train()
     loss_meter = AverageMeter()
+    step_losses = []  # Track loss at each step
 
     use_amp = getattr(dataloader, "use_amp", False)
     scaler = torch.cuda.amp.GradScaler() if use_amp and device.type == "cuda" else None
@@ -132,12 +133,13 @@ def train_epoch(model, dataloader, optimizer, scheduler, device, model_type="sim
             if model_type != "multiview"
             else len(batch["item_ids"]),
         )
+        step_losses.append(loss.item())  # Save step loss
         pbar.set_postfix({"loss": loss_meter.avg})
 
         if batch_idx % 50 == 0 and device.type == "cuda":
             torch.cuda.empty_cache()
 
-    return loss_meter.avg
+    return loss_meter.avg, step_losses
 
 
 def extract_embeddings(
@@ -225,11 +227,11 @@ def train_ssl_model(config_path: str, model_type: str, output_dir: str):
     print("\nLoading metadata...")
     data_dir = Path(config["data"]["output_dir"])
     metadata_path = data_dir / "item_metadata.jsonl"
-    
+
     # Check if sampling is requested
     sample_fraction = config.get("training", {}).get("sample_fraction", 1.0)
     if sample_fraction < 1.0:
-        print(f"⚡ Quick test mode: Using {sample_fraction*100:.0f}% of data")
+        print(f"⚡ Quick test mode: Using {sample_fraction * 100:.0f}% of data")
 
     metadata_dataset = ItemMetadataDataset(
         metadata_path=str(metadata_path),
@@ -435,15 +437,17 @@ def train_ssl_model(config_path: str, model_type: str, output_dir: str):
     print(f"{'=' * 60}\n")
 
     best_loss = float("inf")
+    training_history = []  # Store all training losses
 
     for epoch in range(num_epochs):
         print(f"\nEpoch {epoch + 1}/{num_epochs}")
         print("-" * 40)
 
         # Train
-        avg_loss = train_epoch(
+        avg_loss, step_losses = train_epoch(
             model, dataloader, optimizer, scheduler, device, model_type
         )
+        training_history.extend(step_losses)  # Add step losses to history
 
         print(f"Average loss: {avg_loss:.4f}")
 
@@ -495,6 +499,11 @@ def train_ssl_model(config_path: str, model_type: str, output_dir: str):
                 print(
                     "Warning: model_to_save is not a nn.Module, best model not saved."
                 )
+
+    # Save training losses
+    loss_path = output_path / "training_losses.json"
+    save_json({"losses": training_history}, str(loss_path))
+    print(f"\n✓ Training losses saved: {loss_path}")
 
     # Extract embeddings
     print(f"\n{'=' * 60}")

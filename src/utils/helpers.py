@@ -79,7 +79,12 @@ class AverageMeter:
 
 def get_device() -> torch.device:
     """Get the appropriate device (GPU if available, else CPU)."""
-    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        return torch.device("mps")
+    else:
+        return torch.device("cpu")
 
 
 def load_item_list(filepath: str) -> List[str]:
