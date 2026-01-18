@@ -15,8 +15,8 @@ simclr:
   crop_ratio_max: 0.95
 
 training:
-  batch_size: 64
-  num_epochs: 5
+  batch_size: 16
+  num_epochs: 2
   temperature: 0.07
   learning_rate_backbone: 5.0e-5 # Higher for contrastive learning on augmented views
   learning_rate_head: 2.0e-4 # Higher for projection head in contrastive setting

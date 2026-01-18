@@ -10,8 +10,8 @@ mlm:
   # 10% kept original (implicitly)
 
 training:
-  batch_size: 64
-  num_epochs: 5
+  batch_size: 16
+  num_epochs: 2
   learning_rate_backbone: 2.0e-5 # Conservative for MLM fine-tuning to preserve pre-training
   learning_rate_head: 5.0e-5 # Moderate for MLM prediction head
   warmup_steps: 500

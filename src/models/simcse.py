@@ -117,6 +117,7 @@ class SimCLRModel(nn.Module):
         pooling_strategy: str = "mean",
         dropout: float = 0.1,
         temperature: float = 0.1,
+        use_projection_head: bool = False,
     ):
         super().__init__()
 
@@ -125,6 +126,7 @@ class SimCLRModel(nn.Module):
             embedding_dim=embedding_dim,
             pooling_strategy=pooling_strategy,
             dropout=dropout,
+            use_projection_head=use_projection_head,
         )
 
         self.temperature = temperature

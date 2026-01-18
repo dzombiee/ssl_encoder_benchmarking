@@ -28,6 +28,7 @@ class MultiViewContrastiveModel(nn.Module):
         temperature: float = 0.07,
         shared_encoder: bool = True,
         view_names: Optional[List[str]] = None,
+        use_projection_head: bool = False,
     ):
         """
         Args:
@@ -52,6 +53,7 @@ class MultiViewContrastiveModel(nn.Module):
                 embedding_dim=embedding_dim,
                 pooling_strategy=pooling_strategy,
                 dropout=dropout,
+                use_projection_head=use_projection_head,
             )
         else:
             # Separate encoder for each view
@@ -62,6 +64,7 @@ class MultiViewContrastiveModel(nn.Module):
                         embedding_dim=embedding_dim,
                         pooling_strategy=pooling_strategy,
                         dropout=dropout,
+                        use_projection_head=use_projection_head,
                     )
                     for view_name in self.view_names
                 }

@@ -2,6 +2,7 @@
 MLM (Masked Language Modeling) for BERT fine-tuning.
 """
 
+from typing import Optional
 import torch  # type: ignore
 import torch.nn as nn  # type: ignore
 import torch.nn.functional as F  # type: ignore
@@ -19,6 +20,7 @@ class MLMModel(nn.Module):
         embedding_dim: int = 256,
         pooling_strategy: str = "mean",
         dropout: float = 0.1,
+        use_projection_head: bool = False,
     ):
         super().__init__()
 
@@ -28,17 +30,22 @@ class MLMModel(nn.Module):
         self.config = AutoConfig.from_pretrained(model_name)
         self.bert = AutoModel.from_pretrained(model_name)
         self.hidden_size = self.config.hidden_size
+        self.use_projection_head = use_projection_head
 
         # MLM head (for masked language modeling objective)
         self.mlm_head = nn.Linear(self.hidden_size, self.config.vocab_size)
 
         # Projection head (for downstream embeddings)
-        self.projection_head = nn.Sequential(
-            nn.Linear(self.hidden_size, self.hidden_size),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(self.hidden_size, embedding_dim),
-        )
+        if use_projection_head:
+            self.projection_head = nn.Sequential(
+                nn.Linear(self.hidden_size, self.hidden_size),
+                nn.ReLU(),
+                nn.Dropout(dropout),
+                nn.Linear(self.hidden_size, embedding_dim),
+            )
+        else:
+            self.projection_head: Optional[nn.Sequential] = None
+            self.embedding_dim = self.hidden_size
 
     def forward(self, input_ids, attention_mask, labels=None):
         """
@@ -83,7 +90,10 @@ class MLMModel(nn.Module):
             raise ValueError(f"Unknown pooling strategy: {self.pooling_strategy}")
 
         # Project to embedding dimension
-        embeddings = self.projection_head(pooled)
+        if self.use_projection_head and self.projection_head is not None:
+            embeddings = self.projection_head(pooled)
+        else:
+            embeddings = pooled
 
         if loss is not None:
             return loss, embeddings
