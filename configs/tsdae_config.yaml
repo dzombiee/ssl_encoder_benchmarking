@@ -14,7 +14,7 @@ training:
   batch_size: 32
   num_epochs: 5
   learning_rate_backbone: 5.0e-5 # Higher for reconstruction task learning
-  learning_rate_head: 1.0e-4 # Higher for decoder to learn denoising faster
+  learning_rate_head: 2.0e-4 # Higher for decoder to learn denoising faster
   warmup_steps: 500
   weight_decay: 0.01
   gradient_clip: 1.0

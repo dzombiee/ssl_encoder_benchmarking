@@ -21,11 +21,11 @@ multiview:
   shared_encoder: true # Use same BERT for all views (recommended)
 
 training:
-  batch_size: 8
-  num_epochs: 2
+  batch_size: 64
+  num_epochs: 5
   temperature: 0.07
-  learning_rate_backbone: 3.0e-5 # Moderate for multi-view contrastive alignment
-  learning_rate_head: 1.0e-4 # Higher for projection head across views
+  learning_rate_backbone: 5.0e-5 # Moderate for multi-view contrastive alignment
+  learning_rate_head: 2.0e-4 # Higher for projection head across views
   warmup_steps: 500
   weight_decay: 0.01
   gradient_clip: 1.0

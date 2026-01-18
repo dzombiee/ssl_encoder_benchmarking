@@ -9,11 +9,11 @@ simcse:
   dropout_rate: 0.1 # Dropout rate for creating positive pairs
 
 training:
-  batch_size: 16
-  num_epochs: 2
+  batch_size: 64
+  num_epochs: 5
   temperature: 0.07
-  learning_rate_backbone: 3.0e-5 # Moderate rate for dropout-based contrastive learning
-  learning_rate_head: 1.0e-4 # Higher for projection head learning
+  learning_rate_backbone: 5.0e-5 # Moderate rate for dropout-based contrastive learning
+  learning_rate_head: 2.0e-4 # Higher for projection head learning
   warmup_steps: 500
   weight_decay: 0.01
   gradient_clip: 1.0
