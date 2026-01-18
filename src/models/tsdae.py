@@ -6,6 +6,7 @@ import torch  # type: ignore
 import torch.nn as nn  # type: ignore
 import torch.nn.functional as F  # type: ignore
 from transformers import AutoModel, AutoConfig  # type: ignore
+from typing import Optional
 
 
 class TSDAEModel(nn.Module):
@@ -24,11 +25,13 @@ class TSDAEModel(nn.Module):
         pooling_strategy: str = "mean",
         dropout: float = 0.1,
         tie_encoder_decoder: bool = True,
+        use_projection_head: bool = False,
     ):
         super().__init__()
 
         self.pooling_strategy = pooling_strategy
         self.embedding_dim = embedding_dim
+        self.use_projection_head = use_projection_head
 
         # Encoder (BERT)
         self.config = AutoConfig.from_pretrained(model_name)
@@ -42,12 +45,16 @@ class TSDAEModel(nn.Module):
             self.decoder = AutoModel.from_pretrained(model_name)
 
         # Projection head for embeddings
-        self.projection_head = nn.Sequential(
-            nn.Linear(self.hidden_size, self.hidden_size),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(self.hidden_size, embedding_dim),
-        )
+        if use_projection_head:
+            self.projection_head: Optional[nn.Sequential] = nn.Sequential(
+                nn.Linear(self.hidden_size, self.hidden_size),
+                nn.ReLU(),
+                nn.Dropout(dropout),
+                nn.Linear(self.hidden_size, embedding_dim),
+            )
+        else:
+            self.projection_head: Optional[nn.Sequential] = None
+            self.embedding_dim = self.hidden_size
 
         # Reconstruction head
         self.reconstruction_head = nn.Linear(self.hidden_size, self.config.vocab_size)
@@ -91,7 +98,10 @@ class TSDAEModel(nn.Module):
         pooled = self.pool_embeddings(encoder_outputs.last_hidden_state, attention_mask)
 
         # Project to embedding dimension
-        embeddings = self.projection_head(pooled)
+        if self.use_projection_head and self.projection_head is not None:
+            embeddings = self.projection_head(pooled)
+        else:
+            embeddings = pooled
 
         # Decode to reconstruct original text
         # Use encoder's last hidden states as decoder input
@@ -123,11 +133,23 @@ class TSDAEModel(nn.Module):
         encoder_outputs = self.encoder(
             input_ids=input_ids, attention_mask=attention_mask, return_dict=True
         )
-
         pooled = self.pool_embeddings(encoder_outputs.last_hidden_state, attention_mask)
-        embeddings = self.projection_head(pooled)
-
+        if self.use_projection_head and self.projection_head is not None:
+            embeddings = self.projection_head(pooled)
+        else:
+            embeddings = pooled
         if normalize:
             embeddings = F.normalize(embeddings, p=2, dim=1)
-
         return embeddings
+
+    def get_embedding(self, input_ids, attention_mask):
+        """Get sentence embedding for inference."""
+        outputs = self.encoder(
+            input_ids=input_ids, attention_mask=attention_mask, return_dict=True
+        )
+        pooled = self.pool_embeddings(outputs.last_hidden_state, attention_mask)
+        if self.use_projection_head and self.projection_head is not None:
+            embedding = self.projection_head(pooled)
+        else:
+            embedding = pooled
+        return F.normalize(embedding, p=2, dim=1)

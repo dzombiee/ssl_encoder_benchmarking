@@ -82,13 +82,37 @@ def process_metadata(meta_df: pd.DataFrame) -> pd.DataFrame:
 
     meta_df["category"] = meta_df.apply(get_main_category, axis=1)
 
-    # Concatenate text for full item representation
+    # Extract store/brand information
+    if "store" in meta_df.columns:
+        meta_df["store"] = meta_df["store"].fillna("").apply(clean_text)
+    else:
+        meta_df["store"] = ""
+
+    # Extract product details (dimensions, weight, etc.)
+    def extract_details(details):
+        if not details or not isinstance(details, dict):
+            return ""
+        return " ".join(f"{k} {v}" for k, v in details.items() if v)
+
+    if "details" in meta_df.columns:
+        meta_df["product_details"] = meta_df["details"].apply(extract_details)
+    else:
+        meta_df["product_details"] = ""
+
+    # Concatenate text for full item representation (ENRICHED VERSION)
+    # Use periods as separators for better sentence boundaries
     meta_df["full_text"] = (
         meta_df["title"].astype(str)
-        + " "
+        + " . "
         + meta_df["description"].astype(str)
-        + " "
+        + " . "
         + meta_df["attributes"].astype(str)
+        + " . Product category: "
+        + meta_df["category"].astype(str)
+        + " . Brand: "
+        + meta_df["store"].astype(str)
+        + " . "
+        + meta_df["product_details"].astype(str)
     ).apply(lambda x: " ".join(x.split()))  # Remove extra spaces
 
     # Filter out items with insufficient text

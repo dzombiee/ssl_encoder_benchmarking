@@ -21,6 +21,7 @@ class SimCSEModel(nn.Module):
         pooling_strategy: str = "mean",
         dropout: float = 0.1,
         temperature: float = 0.05,
+        use_projection_head: bool = False,
     ):
         super().__init__()
 
@@ -29,6 +30,7 @@ class SimCSEModel(nn.Module):
             embedding_dim=embedding_dim,
             pooling_strategy=pooling_strategy,
             dropout=dropout,
+            use_projection_head=use_projection_head,
         )
 
         self.temperature = temperature
