@@ -76,6 +76,8 @@ class SimCSEModel(nn.Module):
         batch_size, num_views, dim = embeddings.shape
 
         # Flatten to [batch_size * num_views, dim]
+        # After view(-1, dim), embeddings are INTERLEAVED:
+        # [item0_view0, item0_view1, item1_view0, item1_view1, ...]
         embeddings_flat = embeddings.view(-1, dim)
 
         # Compute similarity matrix: [batch_size * num_views, batch_size * num_views]
@@ -83,12 +85,12 @@ class SimCSEModel(nn.Module):
             torch.matmul(embeddings_flat, embeddings_flat.T) / self.temperature
         )
 
-        # Create labels: positive pairs are (i, i+batch_size) for i in [0, batch_size)
-        # This assumes num_views=2 and views are arranged as [view1_batch, view2_batch]
-        labels = torch.arange(batch_size).to(embeddings.device)
-        labels = torch.cat(
-            [labels + batch_size, labels]
-        )  # [0->bs, 1->bs+1, ..., bs->0, bs+1->1, ...]
+        # Create labels for INTERLEAVED arrangement
+        # Position i pairs with: i+1 if i is even, i-1 if i is odd
+        # This creates pairs: (0,1), (2,3), (4,5), ...
+        labels = torch.arange(batch_size * num_views).to(embeddings.device)
+        # Swap adjacent positions: [1, 0, 3, 2, 5, 4, ...]
+        labels = labels.view(batch_size, num_views).flip(dims=[1]).view(-1)
 
         # Mask to remove self-similarity
         mask = torch.eye(
@@ -154,8 +156,9 @@ class SimCLRModel(nn.Module):
             torch.matmul(embeddings_flat, embeddings_flat.T) / self.temperature
         )
 
-        labels = torch.arange(batch_size).to(embeddings.device)
-        labels = torch.cat([labels + batch_size, labels])
+        # Create labels for INTERLEAVED arrangement
+        labels = torch.arange(batch_size * num_views).to(embeddings.device)
+        labels = labels.view(batch_size, num_views).flip(dims=[1]).view(-1)
 
         mask = torch.eye(
             batch_size * num_views, dtype=torch.bool, device=embeddings.device
