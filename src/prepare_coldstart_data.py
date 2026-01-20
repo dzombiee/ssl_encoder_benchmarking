@@ -1,4 +1,4 @@
-import pandas as pd
+import pandas as pd  # type: ignore
 import json
 from pathlib import Path
 import argparse
@@ -59,9 +59,10 @@ def prepare_coldstart_splits(
 
     # Process metadata fields
     meta_df["title"] = (
-        meta_df["title"].fillna("").apply(clean_text)
-        + " "
-        + meta_df["description"].fillna("").apply(clean_text)
+        meta_df["title"]
+        .fillna("")
+        .apply(clean_text)
+        .str.cat(meta_df["description"].fillna("").apply(clean_text), sep=" ")
     )
     meta_df["store"] = meta_df["store"].fillna("unknown").apply(clean_text)
     meta_df["avg_rating"] = meta_df["average_rating"].fillna(0.0).astype(float)
