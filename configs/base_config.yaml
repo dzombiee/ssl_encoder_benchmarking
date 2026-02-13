@@ -11,8 +11,7 @@ split:
   cold_item_ratio: 0.15 # 15% of items are cold
   min_user_interactions: 5 # Minimum interactions per user
   min_warm_items_per_user: 1 # Ensure users have at least 1 warm item in history
-  val_ratio: 0.1 # 10% of warm items for validation
-  test_ratio: 0.1 # 10% of warm items for test (in addition to cold items)
+  test_ratio: 0.15 # 15% of warm items for test (in addition to cold items)
   random_seed: 42
 
 # Text preprocessing

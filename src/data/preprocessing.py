@@ -131,8 +131,7 @@ def create_cold_start_split(
     cold_item_ratio: float = 0.15,
     min_user_interactions: int = 5,
     min_warm_items_per_user: int = 1,
-    val_ratio: float = 0.1,
-    test_ratio: float = 0.1,
+    test_ratio: float = 0.15,
     random_seed: int = 42,
 ) -> Dict[str, Any]:
     """
@@ -145,7 +144,7 @@ def create_cold_start_split(
     1. Load interactions and metadata
     2. Filter users with sufficient interactions
     3. Select cold items (items that will have NO training interactions)
-    4. Split warm items into train/val/test
+    4. Split warm items into train/test (no validation - models don't use interactions)
     5. For each user, ensure they have ≥min_warm_items_per_user warm items in history
        (guarantees valid user vectors for zero-shot evaluation)
     6. Save splits and metadata (including cold_items.txt for reproducibility)
@@ -210,18 +209,16 @@ def create_cold_start_split(
     print(f"   Warm item interactions: {len(warm_interactions)}")
     print(f"   Cold item interactions: {len(cold_interactions)}")
 
-    # For warm items, split into train/val/test by timestamp
+    # For warm items, split into train/test by timestamp
     warm_interactions = warm_interactions.sort_values("timestamp")
 
-    # Split warm interactions
+    # Split warm interactions (no validation set)
     num_warm = len(warm_interactions)
-    num_val = int(num_warm * val_ratio)
     num_test = int(num_warm * test_ratio)
-    num_train = num_warm - num_val - num_test
+    num_train = num_warm - num_test
 
     train_df = warm_interactions.iloc[:num_train].copy()
-    val_df = warm_interactions.iloc[num_train : num_train + num_val].copy()
-    test_warm_df = warm_interactions.iloc[num_train + num_val :].copy()
+    test_warm_df = warm_interactions.iloc[num_train:].copy()
 
     # All cold item interactions go to test
     test_cold_df = cold_interactions.copy()
@@ -231,7 +228,6 @@ def create_cold_start_split(
 
     print("\n5. Split sizes:")
     print(f"   Train: {len(train_df)} interactions (warm items only)")
-    print(f"   Val: {len(val_df)} interactions (warm items only)")
     print(
         f"   Test: {len(test_df)} interactions ({len(test_warm_df)} warm + {len(test_cold_df)} cold)"
     )
@@ -249,11 +245,9 @@ def create_cold_start_split(
             valid_test_users.add(user_id)
 
     test_df = test_df[test_df["user_id"].isin(valid_test_users)]
-    val_df = val_df[val_df["user_id"].isin(valid_test_users)]
 
     print(f"   Valid test users: {len(valid_test_users)}")
     print(f"   Final test interactions: {len(test_df)}")
-    print(f"   Final val interactions: {len(val_df)}")
 
     # Save splits
     output_path = Path(output_dir)
@@ -265,7 +259,6 @@ def create_cold_start_split(
     save_jsonl(
         train_df.to_dict("records"), str(output_path / "train_interactions.jsonl")
     )
-    save_jsonl(val_df.to_dict("records"), str(output_path / "val_interactions.jsonl"))
     save_jsonl(test_df.to_dict("records"), str(output_path / "test_interactions.jsonl"))
 
     # Save item lists
@@ -291,6 +284,29 @@ def create_cold_start_split(
         output_path / "warm_item_metadata.jsonl", orient="records", lines=True
     )
 
+    # Compute detailed statistics for table
+    train_users = len(train_df["user_id"].unique())
+    test_users = len(test_df["user_id"].unique())
+    train_items = len(train_df["parent_asin"].unique())
+    test_cold_items = len(test_cold_df["parent_asin"].unique())
+    test_warm_items = len(test_warm_df["parent_asin"].unique())
+
+    # User-item pairs (potential interactions)
+    train_user_item_pairs = train_users * train_items
+    test_user_item_pairs = test_users * (test_cold_items + test_warm_items)
+
+    # Sparsity calculation
+    train_sparsity = (
+        (1 - (len(train_df) / train_user_item_pairs)) * 100
+        if train_user_item_pairs > 0
+        else 0
+    )
+    test_sparsity = (
+        (1 - (len(test_df) / test_user_item_pairs)) * 100
+        if test_user_item_pairs > 0
+        else 0
+    )
+
     # Compute and save statistics
     stats = {
         "num_users": len(valid_test_users),
@@ -298,12 +314,20 @@ def create_cold_start_split(
         "num_warm_items": len(warm_items),
         "num_cold_items": len(cold_items),
         "num_train_interactions": len(train_df),
-        "num_val_interactions": len(val_df),
         "num_test_interactions": len(test_df),
         "num_test_warm_interactions": len(test_warm_df),
         "num_test_cold_interactions": len(test_cold_df),
         "cold_item_ratio": cold_item_ratio,
         "sparsity": 1 - (len(reviews_df) / (len(valid_test_users) * len(all_items))),
+        "train_users": train_users,
+        "test_users": test_users,
+        "train_items": train_items,
+        "test_cold_items": test_cold_items,
+        "test_warm_items": test_warm_items,
+        "train_user_item_pairs": train_user_item_pairs,
+        "test_user_item_pairs": test_user_item_pairs,
+        "train_sparsity": train_sparsity,
+        "test_sparsity": test_sparsity,
     }
 
     # User-level statistics
@@ -323,13 +347,50 @@ def create_cold_start_split(
         json.dump(stats, f, indent=2)
 
     print("\n" + "=" * 80)
-    print("Split Statistics:")
+    print("Split Statistics Summary:")
     print("=" * 80)
-    for key, value in stats.items():
-        if isinstance(value, float):
-            print(f"  {key}: {value:.4f}")
-        else:
-            print(f"  {key}: {value}")
+
+    # Print detailed split table
+    print("\nSplit Data Statistics:")
+    print("-" * 80)
+    print(
+        f"{'Split':<13} {'Interact.':<10} {'Users':<7} {'Items':<7} {'Type':<15} {'U-I Pairs':<11} {'Sparse%':<8}"
+    )
+    print("-" * 80)
+
+    # Training row
+    print(
+        f"{'Train 85%':<13} {len(train_df):>9,} {train_users:>6,} {train_items:>6,} {'Warm':<15} {train_user_item_pairs:>10,} {train_sparsity:>7.2f}"
+    )
+
+    # Test row - show combined
+    print(
+        f"{'Test 15%':<13} {len(test_df):>9,} {test_users:>6,} {test_cold_items + test_warm_items:>6,} {'Cold':<15} {test_user_item_pairs:>10,} {test_sparsity:>7.2f}"
+    )
+    print(
+        f"{'  → Cold':<13} {len(test_cold_df):>9,} {'':>6} {test_cold_items:>6,} {'':<15} {'':>10} {'':>7}"
+    )
+    print(
+        f"{'  → Warm':<13} {len(test_warm_df):>9,} {'':>6} {test_warm_items:>6,} {'':<15} {'':>10} {'':>7}"
+    )
+    print("-" * 80)
+
+    print("\n" + "=" * 80)
+    print("Additional Statistics:")
+    print("=" * 80)
+    print(f"  Total unique users: {len(valid_test_users):,}")
+    print(f"  Total unique items: {len(all_items):,}")
+    print(f"  Cold item ratio: {cold_item_ratio * 100:.1f}%")
+    print(
+        f"  Avg interactions per user (train): {stats['avg_user_train_interactions']:.2f}"
+    )
+    print(
+        f"  Avg interactions per user (test): {stats['avg_user_test_interactions']:.2f}"
+    )
+    print(
+        f"  Avg interactions per item (train): {stats['avg_item_train_interactions']:.2f}"
+    )
+    print(f"  Overall sparsity: {stats['sparsity'] * 100:.4f}%")
 
     print("\n✓ Cold-start splits created successfully!")
 
@@ -351,7 +412,6 @@ if __name__ == "__main__":
         cold_item_ratio=config["split"]["cold_item_ratio"],
         min_user_interactions=config["split"]["min_user_interactions"],
         min_warm_items_per_user=config["split"]["min_warm_items_per_user"],
-        val_ratio=config["split"]["val_ratio"],
         test_ratio=config["split"]["test_ratio"],
         random_seed=config["split"]["random_seed"],
     )
