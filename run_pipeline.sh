@@ -32,11 +32,11 @@ python src/train_baselines.py \
     --metadata_path ${DATA_DIR}/item_metadata.jsonl \
     --output_dir ${EXPERIMENTS_DIR}/random
 
-echo "  Training TF-IDF baseline..."
+echo "  Training Vanilla BERT baseline..."
 python src/train_baselines.py \
-    --baseline_type tfidf \
+    --baseline_type vanilla_bert \
     --metadata_path ${DATA_DIR}/item_metadata.jsonl \
-    --output_dir ${EXPERIMENTS_DIR}/tfidf
+    --output_dir ${EXPERIMENTS_DIR}/vanilla_bert
 
 echo "  Training Sentence-BERT baseline..."
 python src/train_baselines.py \
